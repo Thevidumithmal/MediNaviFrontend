@@ -8,12 +8,18 @@ import CustomerDashboard from './pages/customer/CustomerDashboard'
 import CustomerSearch from './pages/customer/CustomerSearch'
 import CustomerOCR from './pages/customer/CustomerOCR'
 import CustomerOrders from './pages/customer/CustomerOrders'
+import CustomerProfile from './pages/customer/CustomerProfile'
 import PharmacyDashboard from './pages/pharmacy/PharmacyDashboard'
 import PharmacyStock from './pages/pharmacy/PharmacyStock'
 import PharmacyOrders from './pages/pharmacy/PharmacyOrders'
 import PharmacyPOS from './pages/pharmacy/PharmacyPOS'
 import PharmacyInvoices from './pages/pharmacy/PharmacyInvoices'
+import PharmacyProfile from './pages/pharmacy/PharmacyProfile'
 import AdminDashboard from './pages/admin/AdminDashboard'
+import AdminReports from './pages/admin/AdminReports'
+import AdminPharmacies from './pages/admin/AdminPharmacies'
+import AdminUsers from './pages/admin/AdminUsers'
+import AdminProfile from './pages/admin/AdminProfile'
 import NotFound from './pages/NotFound'
 import { useAuth } from './context/AuthContext'
 
@@ -44,6 +50,7 @@ export default function App() {
               <Route path="/customer/search" element={<CustomerSearch />} />
               <Route path="/customer/ocr" element={<CustomerOCR />} />
               <Route path="/customer/orders" element={<CustomerOrders />} />
+              <Route path="/customer/profile" element={<CustomerProfile />} />
             </Route>
 
             {/* Pharmacy routes */}
@@ -53,11 +60,16 @@ export default function App() {
               <Route path="/pharmacy/orders" element={<PharmacyOrders />} />
               <Route path="/pharmacy/pos" element={<PharmacyPOS />} />
               <Route path="/pharmacy/invoices" element={<PharmacyInvoices />} />
+              <Route path="/pharmacy/profile" element={<PharmacyProfile />} />
             </Route>
 
             {/* Admin routes */}
             <Route element={<ProtectedRoute allowedRoles={['ADMIN']} />}>
               <Route path="/admin/dashboard" element={<AdminDashboard />} />
+              <Route path="/admin/reports" element={<AdminReports />} />
+              <Route path="/admin/pharmacies" element={<AdminPharmacies />} />
+              <Route path="/admin/users" element={<AdminUsers />} />
+              <Route path="/admin/profile" element={<AdminProfile />} />
             </Route>
 
             <Route path="*" element={<NotFound />} />

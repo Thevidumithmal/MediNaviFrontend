@@ -36,6 +36,10 @@ export function AuthProvider({ children }) {
     setUser(null)
   }
 
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser)
+  }
+
   const value = useMemo(() => ({
     token,
     user,
@@ -43,7 +47,8 @@ export function AuthProvider({ children }) {
     role: user?.role || null,
     pharmacyId: user?.pharmacyId || null,
     login,
-    logout
+    logout,
+    updateUser
   }), [token, user])
 
   // Setup idle timer only when authenticated

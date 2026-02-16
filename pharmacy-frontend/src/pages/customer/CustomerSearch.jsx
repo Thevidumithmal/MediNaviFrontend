@@ -3,6 +3,7 @@ import PharmacyList from '../../components/PharmacyList'
 import { searchMedicines } from '../../services/medicineService'
 import { createOrder } from '../../services/orderService'
 import { useAuth } from '../../context/AuthContext'
+import { showSuccess, showError } from '../../utils/sweetAlert'
 
 export default function CustomerSearch() {
   const { user } = useAuth()
@@ -97,9 +98,11 @@ export default function CustomerSearch() {
         items: [{ medicineId: item.medicineId, quantity: Number(orderModal.qty) }]
       })
       setOrderModal({ open: false, item: null, qty: 1 })
-      alert('Order placed successfully!')
+      showSuccess('Order placed successfully!')
     } catch (err) {
-      setError(err?.response?.data?.message || 'Order failed')
+      const errorMsg = err?.response?.data?.message || 'Order failed'
+      setError(errorMsg)
+      showError(errorMsg)
     } finally {
       setLoading(false)
     }

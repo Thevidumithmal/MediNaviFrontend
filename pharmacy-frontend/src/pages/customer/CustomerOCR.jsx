@@ -1,16 +1,22 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import FileUpload from '../../components/FileUpload'
 import PharmacyList from '../../components/PharmacyList'
 import { ocrPrescription } from '../../services/aiService'
 import { searchMedicines } from '../../services/medicineService'
+import { createOrder } from '../../services/orderService'
+import { useAuth } from '../../context/AuthContext'
+import { showSuccess, showError } from '../../utils/sweetAlert'
 
 export default function CustomerOCR() {
+  const { user } = useAuth()
   const [file, setFile] = useState(null)
   const [medicines, setMedicines] = useState([])
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [location, setLocation] = useState({ lat: null, lon: null, status: 'idle' })
+  const [orderModal, setOrderModal] = useState({ open: false, item: null, qty: 1 })
+  const canOrder = useMemo(() => !!user?.id, [user])
 
   const getLocation = () => {
     if (!navigator.geolocation) {
@@ -101,6 +107,40 @@ export default function CustomerOCR() {
     }
   }
 
+  const openOrder = (item) => {
+    if (!canOrder) {
+      setError('Please login to place orders')
+      return
+    }
+    setOrderModal({ open: true, item, qty: 1 })
+  }
+
+  const placeOrder = async () => {
+    const item = orderModal.item
+    if (!item) return
+
+    if (!item.medicineId) {
+      setError('Ordering needs medicineId from backend. Please update backend /medicines/search to return medicineId.')
+      setOrderModal({ open: false, item: null, qty: 1 })
+      return
+    }
+
+    try {
+      setLoading(true)
+      await createOrder({
+        customerId: user.id,
+        pharmacyId: item.pharmacyId,
+        items: [{ medicineId: item.medicineId, quantity: Number(orderModal.qty) }]
+      })
+      setOrderModal({ open: false, item: null, qty: 1 })
+      showSuccess('Order placed successfully!')
+    } catch (err) {
+      showError(err?.response?.data?.message || 'Order failed')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-4">
       <div className="card p-6">
@@ -146,7 +186,40 @@ export default function CustomerOCR() {
         </div>
       )}
 
-      <PharmacyList results={results} />
+      <PharmacyList results={results} onOrder={openOrder} />
+
+      {orderModal.open && orderModal.item && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4">
+          <div className="card p-6 w-full max-w-md">
+            <h2 className="text-xl font-bold">Place Order</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              {orderModal.item.medicineName} from {orderModal.item.pharmacyName}
+            </p>
+
+            <div className="mt-4">
+              <label className="text-sm font-medium">Quantity</label>
+              <input
+                className="input mt-1"
+                type="number"
+                min={1}
+                max={orderModal.item.quantity || 999}
+                value={orderModal.qty}
+                onChange={(e) => setOrderModal((m) => ({ ...m, qty: e.target.value }))}
+              />
+              {!orderModal.item.medicineId && (
+                <p className="text-xs text-amber-700 mt-2">
+                  Ordering requires <span className="font-semibold">medicineId</span> in search response.
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-2">
+              <button className="btn-secondary" onClick={() => setOrderModal({ open: false, item: null, qty: 1 })}>Cancel</button>
+              <button className="btn" onClick={placeOrder} disabled={loading || !orderModal.item.medicineId}>Confirm Order</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
