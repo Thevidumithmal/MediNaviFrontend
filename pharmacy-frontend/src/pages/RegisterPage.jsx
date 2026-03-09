@@ -91,7 +91,7 @@ export default function RegisterPage() {
     try {
       setLoading(true)
       const result = await registerUser(payload)
-      console.log('✅ Registration Response:', result)
+      console.log('[SUCCESS] Registration Response:', result)
       await showSuccess('Registration successful! Redirecting to login...', 'Welcome!')
       navigate('/login')
     } catch (err) {

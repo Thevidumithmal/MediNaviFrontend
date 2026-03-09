@@ -9,3 +9,8 @@ export async function loginUser(payload) {
   const { data } = await api.post('/auth/login', payload)
   return data
 }
+
+export async function forgotPassword(payload) {
+  const { data } = await api.post('/auth/forgot-password', payload)
+  return data
+}

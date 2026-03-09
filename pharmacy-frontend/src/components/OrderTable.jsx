@@ -1,6 +1,21 @@
 import React from 'react'
 
 export default function OrderTable({ orders, context = 'pharmacy', onReady, onReject }) {
+  const getStatusStyle = (status) => {
+    switch (status?.toUpperCase()) {
+      case 'PENDING':
+        return 'bg-blue-100 text-blue-800 border-blue-200'
+      case 'REJECTED':
+        return 'bg-red-100 text-red-800 border-red-200'
+      case 'READY':
+        return 'bg-green-100 text-green-800 border-green-200'
+      case 'COMPLETED':
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+  }
+
   if (!orders || orders.length === 0) {
     return <div className="card p-6 text-center text-gray-600">No orders yet.</div>
   }
@@ -31,8 +46,10 @@ export default function OrderTable({ orders, context = 'pharmacy', onReady, onRe
               )}
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-600">Status</p>
-              <p className="font-semibold">{o.status}</p>
+              <p className="text-sm text-gray-600 mb-1">Status</p>
+              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border ${getStatusStyle(o.status)}`}>
+                {o.status}
+              </span>
             </div>
             <div className="text-right">
               <p className="text-sm text-gray-600">Total</p>
@@ -68,7 +85,7 @@ export default function OrderTable({ orders, context = 'pharmacy', onReady, onRe
           {context === 'pharmacy' && o.status === 'PENDING' && (
             <div className="mt-3 flex flex-wrap gap-2">
               <button className="btn" onClick={() => onReady && onReady(o)}>Mark Ready</button>
-              <button className="btn-secondary" onClick={() => onReject && onReject(o)}>Reject</button>
+              <button className="btn-danger" onClick={() => onReject && onReject(o)}>Reject</button>
             </div>
           )}
 

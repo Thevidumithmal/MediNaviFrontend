@@ -1,9 +1,11 @@
 import React from 'react'
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import ProtectedRoute from './components/ProtectedRoute'
 import LoginPage from './pages/LoginPage'
 import RegisterPage from './pages/RegisterPage'
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage'
+import HelpPage from './pages/HelpPage'
 import CustomerDashboard from './pages/customer/CustomerDashboard'
 import CustomerSearch from './pages/customer/CustomerSearch'
 import CustomerOCR from './pages/customer/CustomerOCR'
@@ -22,6 +24,7 @@ import AdminUsers from './pages/admin/AdminUsers'
 import AdminProfile from './pages/admin/AdminProfile'
 import NotFound from './pages/NotFound'
 import { useAuth } from './context/AuthContext'
+import MedicineChatbot from './components/MedicineChatbot'
 
 function HomeRedirect() {
   const { isAuthenticated, role } = useAuth()
@@ -33,16 +36,23 @@ function HomeRedirect() {
 }
 
 export default function App() {
+  const location = useLocation()
+  const { role } = useAuth()
+  const hideNavbarPaths = ['/login', '/register', '/forgot-password', '/help']
+  const shouldHideNavbar = hideNavbarPaths.includes(location.pathname)
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Navbar />
+      {!shouldHideNavbar && <Navbar />}
       <main className="flex-1">
-        <div className="max-w-6xl mx-auto px-4 py-6">
+        <div className={shouldHideNavbar ? "" : "max-w-6xl mx-auto px-4 py-6"}>
           <Routes>
             <Route path="/" element={<HomeRedirect />} />
 
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+            <Route path="/help" element={<HelpPage />} />
 
             {/* Customer routes */}
             <Route element={<ProtectedRoute allowedRoles={['CUSTOMER']} />}>
@@ -76,6 +86,9 @@ export default function App() {
           </Routes>
         </div>
       </main>
+      
+      {/* Medicine Chatbot - Available on all customer pages */}
+      {role === 'CUSTOMER' && <MedicineChatbot />}
     </div>
   )
 }

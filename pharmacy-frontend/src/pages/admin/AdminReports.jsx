@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getAdminStats } from '../../services/adminService'
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts'
 
 export default function AdminReports() {
   const [stats, setStats] = useState(null)
@@ -11,11 +12,59 @@ export default function AdminReports() {
     loadData()
   }, [])
 
+  // Normalize data to handle case-insensitive duplicates
+  const normalizeByField = (data, field, additionalSumFields = []) => {
+    if (!data || !Array.isArray(data)) return data
+
+    const normalized = {}
+    
+    data.forEach(item => {
+      const key = item[field]
+      if (!key) return
+      
+      const lowerKey = String(key).toLowerCase()
+      
+      if (!normalized[lowerKey]) {
+        // First occurrence - use proper case (capitalize first letter)
+        normalized[lowerKey] = {
+          ...item,
+          [field]: String(key).charAt(0).toUpperCase() + String(key).slice(1).toLowerCase()
+        }
+      } else {
+        // Merge with existing entry - sum numeric fields
+        normalized[lowerKey].count = (normalized[lowerKey].count || 0) + (item.count || 0)
+        
+        // Sum additional fields if specified
+        additionalSumFields.forEach(sumField => {
+          if (item[sumField] !== undefined) {
+            normalized[lowerKey][sumField] = (normalized[lowerKey][sumField] || 0) + (item[sumField] || 0)
+          }
+        })
+      }
+    })
+
+    return Object.values(normalized)
+  }
+
   const loadData = async () => {
     setError('')
     try {
       setLoading(true)
       const statsRes = await getAdminStats().catch(() => null)
+      
+      // Normalize data to handle case-insensitive duplicates
+      if (statsRes) {
+        if (statsRes.pharmaciesByRegion) {
+          statsRes.pharmaciesByRegion = normalizeByField(statsRes.pharmaciesByRegion, 'region')
+        }
+        if (statsRes.topMedicines) {
+          statsRes.topMedicines = normalizeByField(statsRes.topMedicines, 'name', ['totalStock', 'pharmacyCount'])
+        }
+        if (statsRes.usersByRole) {
+          statsRes.usersByRole = normalizeByField(statsRes.usersByRole, 'role')
+        }
+      }
+      
       setStats(statsRes)
     } catch (err) {
       setError('Failed to load reports')
@@ -27,6 +76,16 @@ export default function AdminReports() {
   const showDetails = (title, data) => {
     setDetailModal({ open: true, title, data })
   }
+
+  // Format column headers to proper title case
+  const formatColumnHeader = (key) => {
+    // Convert camelCase to Title Case
+    const result = key.replace(/([A-Z])/g, ' $1')
+    return result.charAt(0).toUpperCase() + result.slice(1)
+  }
+
+  // Color palette for pie chart
+  const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
 
   return (
     <div className="space-y-4">
@@ -68,24 +127,33 @@ export default function AdminReports() {
             </button>
           )}
         </div>
-        <div className="h-64 flex items-end gap-4">
+        <div className="h-80 flex items-center justify-center">
           {stats?.usersByRole && stats.usersByRole.length > 0 ? (
-            stats.usersByRole.map((item, idx) => {
-              const maxCount = Math.max(...stats.usersByRole.map((d) => d.count || 0))
-              const height = maxCount > 0 ? ((item.count || 0) / maxCount) * 100 : 0
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-blue-500 rounded-t cursor-pointer hover:bg-blue-600 transition"
-                    style={{ height: `${height}%`, minHeight: item.count > 0 ? '20px' : '0' }}
-                    onClick={() => showDetails('Users by Role', stats.usersByRole)}
-                    title={`${item.role}: ${item.count} users`}
-                  />
-                  <p className="text-xs text-gray-600 mt-2 text-center font-medium">{item.role}</p>
-                  <p className="text-sm font-bold text-gray-800">{item.count}</p>
-                </div>
-              )
-            })
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={stats.usersByRole}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ role, count, percent }) => `${role}: ${count} (${(percent * 100).toFixed(0)}%)`}
+                  outerRadius={100}
+                  fill="#8884d8"
+                  dataKey="count"
+                  nameKey="role"
+                >
+                  {stats.usersByRole.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value, name, props) => [`${value} users`, props.payload.role]} />
+                <Legend 
+                  verticalAlign="bottom" 
+                  height={36}
+                  formatter={(value, entry) => `${entry.payload.role}: ${entry.payload.count}`}
+                />
+              </PieChart>
+            </ResponsiveContainer>
           ) : (
             <p className="text-gray-500 text-sm">No data available</p>
           )}
@@ -102,24 +170,33 @@ export default function AdminReports() {
             </button>
           )}
         </div>
-        <div className="h-64 flex items-end gap-4">
+        <div className="h-80 flex items-center justify-center">
           {stats?.pharmaciesByRegion && stats.pharmaciesByRegion.length > 0 ? (
-            stats.pharmaciesByRegion.map((item, idx) => {
-              const maxCount = Math.max(...stats.pharmaciesByRegion.map((d) => d.count || 0))
-              const height = maxCount > 0 ? ((item.count || 0) / maxCount) * 100 : 0
-              return (
-                <div key={idx} className="flex-1 flex flex-col items-center">
-                  <div
-                    className="w-full bg-emerald-500 rounded-t cursor-pointer hover:bg-emerald-600 transition"
-                    style={{ height: `${height}%`, minHeight: item.count > 0 ? '20px' : '0' }}
-                    onClick={() => showDetails('Pharmacies by Region', stats.pharmaciesByRegion)}
-                    title={`${item.region || 'Unknown'}: ${item.count} pharmacies`}
-                  />
-                  <p className="text-xs text-gray-600 mt-2 text-center font-medium">{item.region || 'Unknown'}</p>
-                  <p className="text-sm font-bold text-gray-800">{item.count}</p>
-                </div>
-              )
-            })
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={stats.pharmaciesByRegion} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  dataKey="region" 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  label={{ value: 'Region', position: 'insideBottom', offset: -10, fill: '#6b7280' }}
+                />
+                <YAxis 
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  label={{ value: 'Count', angle: -90, position: 'insideLeft', fill: '#6b7280' }}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  formatter={(value) => [`${value} pharmacies`, 'Count']}
+                />
+                <Bar 
+                  dataKey="count" 
+                  fill="#10b981" 
+                  radius={[8, 8, 0, 0]}
+                  animationDuration={1500}
+                  animationBegin={0}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
             <p className="text-gray-500 text-sm">No data available</p>
           )}
@@ -136,30 +213,42 @@ export default function AdminReports() {
             </button>
           )}
         </div>
-        <div className="space-y-3">
+        <div className="h-96 flex items-center justify-center">
           {stats?.topMedicines && stats.topMedicines.length > 0 ? (
-            stats.topMedicines.map((medicine, idx) => {
-              const maxStock = Math.max(...stats.topMedicines.map((m) => m.totalStock || 0))
-              const width = maxStock > 0 ? ((medicine.totalStock || 0) / maxStock) * 100 : 0
-              return (
-                <div key={idx} className="flex items-center gap-3">
-                  <div className="w-6 text-gray-500 text-sm font-medium">{idx + 1}</div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{medicine.name || 'Unknown'}</p>
-                    <div className="mt-1 h-6 bg-gray-100 rounded overflow-hidden">
-                      <div
-                        className="h-full bg-purple-500 cursor-pointer hover:bg-purple-600 transition flex items-center justify-end px-2"
-                        style={{ width: `${width}%`, minWidth: medicine.totalStock > 0 ? '40px' : '0' }}
-                        onClick={() => showDetails('Top Medicines', stats.topMedicines)}
-                      >
-                        <span className="text-xs text-white font-medium">{medicine.totalStock || 0}</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">{medicine.pharmacyCount || 0} pharmacies</p>
-                  </div>
-                </div>
-              )
-            })
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart 
+                data={stats.topMedicines} 
+                layout="vertical"
+                margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                <XAxis 
+                  type="number"
+                  tick={{ fill: '#6b7280', fontSize: 12 }}
+                  label={{ value: 'Total Stock', position: 'insideBottom', offset: -10, fill: '#6b7280' }}
+                />
+                <YAxis 
+                  type="category"
+                  dataKey="name" 
+                  tick={{ fill: '#6b7280', fontSize: 11 }}
+                  width={90}
+                />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: '8px' }}
+                  formatter={(value, name, props) => [
+                    `Stock: ${value}`,
+                    `${props.payload.pharmacyCount} pharmacies`
+                  ]}
+                />
+                <Bar 
+                  dataKey="totalStock" 
+                  fill="#8b5cf6" 
+                  radius={[0, 8, 8, 0]}
+                  animationDuration={1500}
+                  animationBegin={0}
+                />
+              </BarChart>
+            </ResponsiveContainer>
           ) : (
             <p className="text-gray-500 text-sm">No data available</p>
           )}
@@ -178,7 +267,7 @@ export default function AdminReports() {
                     <thead className="border-b">
                       <tr className="text-left">
                         {Object.keys(detailModal.data[0]).map((key) => (
-                          <th key={key} className="pb-2 font-medium">{key}</th>
+                          <th key={key} className="pb-2 font-medium text-gray-700">{formatColumnHeader(key)}</th>
                         ))}
                       </tr>
                     </thead>
@@ -198,7 +287,7 @@ export default function AdminReports() {
               )}
             </div>
             <div className="mt-6 flex justify-end">
-              <button className="btn-secondary" onClick={() => setDetailModal({ open: false, title: '', data: [] })}>
+              <button className="btn-danger" onClick={() => setDetailModal({ open: false, title: '', data: [] })}>
                 Close
               </button>
             </div>

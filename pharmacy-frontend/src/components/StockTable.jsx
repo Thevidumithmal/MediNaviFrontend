@@ -57,8 +57,8 @@ export default function StockTable({ items, onUpdate }) {
                 <td className="p-3 text-right">
                   {isEditing ? (
                     <div className="flex justify-end gap-2">
-                      <button className="btn-secondary" onClick={cancelEdit}>Cancel</button>
-                      <button className="btn" onClick={() => save(it.id)}>Save</button>
+                      <button className="btn-danger" onClick={cancelEdit}>Cancel</button>
+                      <button className="btn-success" onClick={() => save(it.id)}>Save</button>
                     </div>
                   ) : (
                     <button className="btn-secondary" onClick={() => startEdit(it)}>Edit</button>

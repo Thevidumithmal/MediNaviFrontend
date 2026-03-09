@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import logoSvg from '../assets/logo.svg'
+import { useNotifications } from '../context/NotificationContext'
+import logoSvg from '../assets/medinavi logo.png'
 
 function NavItem({ to, children }) {
   return (
@@ -19,6 +20,7 @@ function NavItem({ to, children }) {
 
 export default function Navbar() {
   const { isAuthenticated, role, user, logout } = useAuth()
+  const { notificationCount } = useNotifications()
   const navigate = useNavigate()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const dropdownRef = useRef(null)
@@ -63,11 +65,16 @@ export default function Navbar() {
     return user.name.substring(0, 2).toUpperCase()
   }
 
+  const goToOrders = () => {
+    if (role === 'CUSTOMER') navigate('/customer/orders')
+    else if (role === 'PHARMACY') navigate('/pharmacy/orders')
+  }
+
   return (
     <header className="border-b bg-white print:hidden">
       <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-        <Link to="/" className="flex items-center gap-2 font-bold text-lg hover:opacity-80">
-          <img src={logoSvg} alt="MediNavi Logo" className="w-8 h-8" />
+        <Link to="/" className="flex items-center gap-3 font-bold text-xl hover:opacity-80">
+          <img src={logoSvg} alt="MediNavi Logo" className="w-16 h-16 object-cover" />
           <span className="text-blue-600">MediNavi</span>
         </Link>
 
@@ -83,7 +90,7 @@ export default function Navbar() {
             <>
               <NavItem to="/customer/dashboard">Dashboard</NavItem>
               <NavItem to="/customer/search">Search</NavItem>
-              <NavItem to="/customer/ocr">Prescription OCR</NavItem>
+              <NavItem to="/customer/ocr">Prescription Upload</NavItem>
               <NavItem to="/customer/profile">Profile</NavItem>
             </>
           )}
@@ -109,6 +116,35 @@ export default function Navbar() {
         </nav>
 
         <div className="flex items-center gap-3">
+          {isAuthenticated && (role === 'CUSTOMER' || role === 'PHARMACY') && (
+            <button
+              onClick={goToOrders}
+              className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+              title="Notifications"
+            >
+              {/* Bell/Message Icon */}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-6 h-6 text-gray-700"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"
+                />
+              </svg>
+              {/* Notification Badge */}
+              {notificationCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 flex items-center justify-center px-1">
+                  {notificationCount > 99 ? '99+' : notificationCount}
+                </span>
+              )}
+            </button>
+          )}
           {isAuthenticated ? (
             <div className="relative" ref={dropdownRef}>
               <button

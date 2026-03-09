@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { getAllUsers, createUser, updateUserStatus, changeUserPassword, getAllPharmacies } from '../../services/adminService'
-import { validateEmail, validatePhone, validatePassword, validateUsername, validateName, validateRequired } from '../../utils/validation'
+import { validateEmail, validatePhoneRequired, validatePassword, validateUsername, validateName, validateRequired } from '../../utils/validation'
 import { showSuccess, showError, showConfirm } from '../../utils/sweetAlert'
 
 export default function AdminUsers() {
@@ -61,8 +61,8 @@ export default function AdminUsers() {
       username: validateUsername(form.username),
       password: validatePassword(form.password, 6),
       name: validateName(form.name),
-      email: form.email ? validateEmail(form.email) : '',
-      phone: validatePhone(form.phone)
+      email: validateEmail(form.email),
+      phone: validatePhoneRequired(form.phone)
     }
 
     if (form.role === 'PHARMACY' && !form.pharmacyId) {
@@ -82,8 +82,8 @@ export default function AdminUsers() {
         username: form.username,
         password: form.password,
         name: form.name,
-        email: form.email || null,
-        phone: form.phone || null,
+        email: form.email,
+        phone: form.phone,
         role: form.role,
         pharmacyId: form.role === 'PHARMACY' ? Number(form.pharmacyId) : null
       }
@@ -101,6 +101,7 @@ export default function AdminUsers() {
   }
 
   const toggleStatus = async (userId, currentStatus) => {
+    const newStatus = currentStatus === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE'
     
     const result = await showConfirm(
       `Do you want to ${newStatus === 'ACTIVE' ? 'activate' : 'deactivate'} this user?`,
@@ -292,7 +293,7 @@ export default function AdminUsers() {
                 {fieldErrors.name && <p className="text-xs text-red-600 mt-1">{fieldErrors.name}</p>}
               </div>
               <div>
-                <label className="text-sm font-medium">Email</label>
+                <label className="text-sm font-medium">Email *</label>
                 <input
                   type="text"
                   className={`input mt-1 ${fieldErrors.email ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
@@ -306,7 +307,7 @@ export default function AdminUsers() {
                 {fieldErrors.email && <p className="text-xs text-red-600 mt-1">{fieldErrors.email}</p>}
               </div>
               <div>
-                <label className="text-sm font-medium">Phone</label>
+                <label className="text-sm font-medium">Phone *</label>
                 <input
                   className={`input mt-1 ${fieldErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   value={form.phone}
@@ -360,7 +361,7 @@ export default function AdminUsers() {
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
-                className="btn-secondary"
+                className="btn-danger"
                 onClick={() => {
                   setAddModal(false)
                   setForm({ username: '', password: '', name: '', email: '', phone: '', role: 'CUSTOMER', pharmacyId: '' })
@@ -368,7 +369,7 @@ export default function AdminUsers() {
               >
                 Cancel
               </button>
-              <button className="btn" onClick={handleAdd} disabled={loading}>
+              <button className="btn-success" onClick={handleAdd} disabled={loading}>
                 {loading ? 'Adding...' : 'Add User'}
               </button>
             </div>
@@ -400,7 +401,7 @@ export default function AdminUsers() {
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
-                className="btn-secondary"
+                className="btn-danger"
                 onClick={() => {
                   setPasswordModal({ open: false, userId: null, username: '' })
                   setNewPassword('')
@@ -409,7 +410,7 @@ export default function AdminUsers() {
               >
                 Cancel
               </button>
-              <button className="btn" onClick={handlePasswordChange} disabled={loading}>
+              <button className="btn-success" onClick={handlePasswordChange} disabled={loading}>
                 {loading ? 'Changing...' : 'Change Password'}
               </button>
             </div>

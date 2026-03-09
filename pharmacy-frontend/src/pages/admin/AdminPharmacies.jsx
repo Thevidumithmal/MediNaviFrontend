@@ -41,9 +41,9 @@ export default function AdminPharmacies() {
     const errors = {
       name: validateRequired(form.name, 'Pharmacy name'),
       address: validateRequired(form.address, 'Address'),
-      phone: validatePhone(form.phone),
-      latitude: validateLatitude(form.latitude),
-      longitude: validateLongitude(form.longitude)
+      phone: validateRequired(form.phone, 'Phone number') || validatePhone(form.phone),
+      latitude: validateRequired(form.latitude, 'Latitude') || validateLatitude(form.latitude),
+      longitude: validateRequired(form.longitude, 'Longitude') || validateLongitude(form.longitude)
     }
 
     setFieldErrors(errors)
@@ -56,9 +56,9 @@ export default function AdminPharmacies() {
     const payload = {
       name: form.name,
       address: form.address,
-      phone: form.phone || null,
-      latitude: form.latitude ? Number(form.latitude) : null,
-      longitude: form.longitude ? Number(form.longitude) : null
+      phone: form.phone,
+      latitude: Number(form.latitude),
+      longitude: Number(form.longitude)
     }
 
     try {
@@ -138,7 +138,7 @@ export default function AdminPharmacies() {
                     </td>
                     <td className="p-3">
                       <button
-                        className="text-red-600 hover:text-red-800 text-sm font-medium"
+                        className="btn-danger text-sm"
                         onClick={() => handleDelete(pharmacy.id)}
                         disabled={loading}
                       >
@@ -192,7 +192,7 @@ export default function AdminPharmacies() {
                 {fieldErrors.address && <p className="text-xs text-red-600 mt-1">{fieldErrors.address}</p>}
               </div>
               <div>
-                <label className="text-sm font-medium">Phone</label>
+                <label className="text-sm font-medium">Phone *</label>
                 <input
                   className={`input mt-1 ${fieldErrors.phone ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                   value={form.phone}
@@ -206,7 +206,7 @@ export default function AdminPharmacies() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-sm font-medium">Latitude</label>
+                  <label className="text-sm font-medium">Latitude *</label>
                   <input
                     className={`input mt-1 ${fieldErrors.latitude ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     value={form.latitude}
@@ -219,7 +219,7 @@ export default function AdminPharmacies() {
                   {fieldErrors.latitude && <p className="text-xs text-red-600 mt-1">{fieldErrors.latitude}</p>}
                 </div>
                 <div>
-                  <label className="text-sm font-medium">Longitude</label>
+                  <label className="text-sm font-medium">Longitude *</label>
                   <input
                     className={`input mt-1 ${fieldErrors.longitude ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : ''}`}
                     value={form.longitude}
@@ -235,7 +235,7 @@ export default function AdminPharmacies() {
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
-                className="btn-secondary"
+                className="btn-danger"
                 onClick={() => {
                   setAddModal(false)
                   setForm({ name: '', address: '', phone: '', latitude: '', longitude: '' })
@@ -244,7 +244,7 @@ export default function AdminPharmacies() {
               >
                 Cancel
               </button>
-              <button className="btn" onClick={handleAdd} disabled={loading}>
+              <button className="btn-success" onClick={handleAdd} disabled={loading}>
                 {loading ? 'Adding...' : 'Add Pharmacy'}
               </button>
             </div>

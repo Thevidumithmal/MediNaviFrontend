@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useAuth } from '../../context/AuthContext'
-import { getCurrentUserProfile, updateUserProfile } from '../../services/userService'
+import { getCurrentUserProfile, updateUserProfile, changePassword } from '../../services/userService'
 import { showError, showSuccess } from '../../utils/sweetAlert'
-import { validateUsername, validatePhoneRequired } from '../../utils/validation'
+import { validateUsername, validatePhoneRequired, validatePassword } from '../../utils/validation'
 
 export default function AdminProfile() {
   const { user: authUser, updateUser } = useAuth()
@@ -11,6 +11,12 @@ export default function AdminProfile() {
   const [isEditing, setIsEditing] = useState(false)
   const [formData, setFormData] = useState({ username: '', phone: '' })
   const [errors, setErrors] = useState({})
+  
+  // Password change state
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwordErrors, setPasswordErrors] = useState({})
+  const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false })
+  const [passwordLoading, setPasswordLoading] = useState(false)
 
   useEffect(() => {
     // First, use data from auth context
@@ -23,16 +29,16 @@ export default function AdminProfile() {
   const loadProfile = async () => {
     try {
       setLoading(true)
-      console.log('🔍 Current user from auth:', authUser)
-      console.log('📡 Fetching fresh profile from API...')
+      console.log('[DEBUG] Current user from auth:', authUser)
+      console.log('[API] Fetching fresh profile from API...')
       const data = await getCurrentUserProfile()
-      console.log('✅ Profile data received:', data)
+      console.log('[SUCCESS] Profile data received:', data)
       setUser(data)
     } catch (err) {
-      console.error('❌ Failed to load profile:', err)
+      console.error('[ERROR] Failed to load profile:', err)
       console.error('Error details:', err.response?.data || err.message)
       // Keep using auth context user if API fails
-      console.log('📋 Using cached user data from login')
+      console.log('[CACHE] Using cached user data from login')
     } finally {
       setLoading(false)
     }
@@ -40,7 +46,7 @@ export default function AdminProfile() {
 
   // Debug: Show what data we have
   useEffect(() => {
-    console.log('👤 Admin Profile Data:', {
+    console.log('[DEBUG] Admin Profile Data:', {
       id: user?.id,
       username: user?.username,
       name: user?.name,
@@ -103,6 +109,60 @@ export default function AdminProfile() {
       showError(errorMessage)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Password change handlers
+  const handlePasswordChange = (e) => {
+    const { name, value } = e.target
+    setPasswordData(prev => ({ ...prev, [name]: value }))
+    if (passwordErrors[name]) {
+      setPasswordErrors(prev => ({ ...prev, [name]: '' }))
+    }
+  }
+
+  const togglePasswordVisibility = (field) => {
+    setShowPasswords(prev => ({ ...prev, [field]: !prev[field] }))
+  }
+
+  const validatePasswordForm = () => {
+    const newErrors = {}
+    
+    if (!passwordData.currentPassword) {
+      newErrors.currentPassword = 'Current password is required'
+    }
+    
+    const newPasswordError = validatePassword(passwordData.newPassword)
+    if (newPasswordError) newErrors.newPassword = newPasswordError
+    
+    if (!passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your new password'
+    } else if (passwordData.newPassword !== passwordData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match'
+    }
+    
+    setPasswordErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleChangePassword = async () => {
+    if (!validatePasswordForm()) return
+    
+    try {
+      setPasswordLoading(true)
+      await changePassword({
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      })
+      showSuccess('Password changed successfully!')
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' })
+      setPasswordErrors({})
+    } catch (err) {
+      console.error('Failed to change password:', err)
+      const errorMessage = err.response?.data?.message || 'Failed to change password'
+      showError(errorMessage)
+    } finally {
+      setPasswordLoading(false)
     }
   }
 
@@ -180,7 +240,7 @@ export default function AdminProfile() {
                   <button
                     onClick={handleSaveProfile}
                     disabled={loading}
-                    className="btn-primary"
+                    className="btn-success"
                   >
                     {loading ? 'Saving...' : 'Save Changes'}
                   </button>
@@ -284,6 +344,133 @@ export default function AdminProfile() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
             </svg>
             <span className="font-medium">Full System Access</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Change Password Card */}
+      <div className="card p-6">
+        <h3 className="text-lg font-semibold mb-4">Change Password</h3>
+        <p className="text-sm text-gray-600 mb-4">Update your password to keep your account secure</p>
+        
+        <div className="max-w-md space-y-4">
+          {/* Current Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Current Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.current ? 'text' : 'password'}
+                name="currentPassword"
+                value={passwordData.currentPassword}
+                onChange={handlePasswordChange}
+                className={`input pr-10 ${passwordErrors.currentPassword ? 'border-red-500' : ''}`}
+                placeholder="Enter current password"
+              />
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility('current')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPasswords.current ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {passwordErrors.currentPassword && (
+              <p className="text-red-500 text-sm mt-1">{passwordErrors.currentPassword}</p>
+            )}
+          </div>
+
+          {/* New Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              New Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.new ? 'text' : 'password'}
+                name="newPassword"
+                value={passwordData.newPassword}
+                onChange={handlePasswordChange}
+                className={`input pr-10 ${passwordErrors.newPassword ? 'border-red-500' : ''}`}
+                placeholder="Enter new password"
+              />
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility('new')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPasswords.new ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {passwordErrors.newPassword && (
+              <p className="text-red-500 text-sm mt-1">{passwordErrors.newPassword}</p>
+            )}
+          </div>
+
+          {/* Confirm New Password */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Confirm New Password *
+            </label>
+            <div className="relative">
+              <input
+                type={showPasswords.confirm ? 'text' : 'password'}
+                name="confirmPassword"
+                value={passwordData.confirmPassword}
+                onChange={handlePasswordChange}
+                className={`input pr-10 ${passwordErrors.confirmPassword ? 'border-red-500' : ''}`}
+                placeholder="Re-enter new password"
+              />
+              <button
+                type="button"
+                onClick={() => togglePasswordVisibility('confirm')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                {showPasswords.confirm ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
+            {passwordErrors.confirmPassword && (
+              <p className="text-red-500 text-sm mt-1">{passwordErrors.confirmPassword}</p>
+            )}
+          </div>
+
+          {/* Change Password Button */}
+          <div className="pt-2">
+            <button
+              onClick={handleChangePassword}
+              disabled={passwordLoading}
+              className="btn-success"
+            >
+              {passwordLoading ? 'Changing Password...' : 'Change Password'}
+            </button>
           </div>
         </div>
       </div>
